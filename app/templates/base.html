@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ИС Управления ОП{% endblock %} — ВГТУ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            vgtu: {
+              dark:  '#263045',
+              mid:   '#1a2436',
+              light: '#3a4a65',
+              gold:  '#c8a96e',
+              'gold-light': '#e8c98e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; }
+    .status-draft     { background: #f3f4f6; color: #6b7280; }
+    .status-submitted { background: #fef3c7; color: #92400e; }
+    .status-approved  { background: #d1fae5; color: #065f46; }
+    .nav-link { transition: color 0.15s, border-color 0.15s; }
+    .nav-link:hover { color: #c8a96e; border-bottom-color: #c8a96e; }
+    .nav-link.active { color: #c8a96e; border-bottom-color: #c8a96e; }
+    .btn-primary {
+      background: #263045; color: white; padding: 0.5rem 1.25rem;
+      border-radius: 4px; font-size: 0.875rem; transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #3a4a65; }
+    .btn-gold {
+      background: #c8a96e; color: #1a1a1a; padding: 0.5rem 1.25rem;
+      border-radius: 4px; font-size: 0.875rem; font-weight: 600; transition: background 0.15s;
+    }
+    .btn-gold:hover { background: #e8c98e; }
+    .btn-danger {
+      background: #dc2626; color: white; padding: 0.375rem 0.875rem;
+      border-radius: 4px; font-size: 0.8125rem; transition: background 0.15s;
+    }
+    .btn-danger:hover { background: #b91c1c; }
+    .table-row:hover { background: #f8f9fc; }
+    .card { background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04); }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-vgtu-dark shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Логотип -->
+        <a href="/programs" class="flex items-center gap-3 flex-shrink-0">
+          <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+            <rect width="38" height="38" rx="4" fill="#c8a96e"/>
+            <text x="19" y="26" text-anchor="middle" font-family="Arial" font-weight="700" font-size="14" fill="#263045">ВГТУ</text>
+          </svg>
+          <div class="hidden sm:block">
+            <div class="text-white font-bold text-sm leading-tight">Управление</div>
+            <div class="text-vgtu-gold text-xs leading-tight">образовательными программами</div>
+          </div>
+        </a>
+
+        <!-- Навигация -->
+        <nav class="flex items-center gap-1">
+          <a href="/programs"
+             class="nav-link text-gray-300 border-b-2 border-transparent px-3 py-5 text-sm
+                    {% if request.url.path.startswith('/programs') or request.url.path.startswith('/disciplines') or request.url.path == '/' %}active{% endif %}">
+            Программы и дисциплины
+          </a>
+        </nav>
+
+        <!-- Пользователь -->
+        {% if user %}
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:block text-right">
+            <div class="text-white text-sm font-medium leading-tight">{{ user.full_name }}</div>
+            <div class="text-vgtu-gold text-xs leading-tight">{{ user.role.display_name }}</div>
+          </div>
+          <a href="/auth/logout"
+             class="text-gray-400 hover:text-vgtu-gold text-xs border border-gray-600
+                    hover:border-vgtu-gold px-2 py-1 rounded transition-colors">
+            Выйти
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Breadcrumbs -->
+  {% block breadcrumbs %}{% endblock %}
+
+  <!-- Main -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-vgtu-dark text-gray-500 text-xs py-3 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+      Воронежский государственный технический университет &mdash; ИС управления образовательными программами
+    </div>
+  </footer>
+
+</body>
+</html>

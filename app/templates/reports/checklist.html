@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block title %}Отчёт: {{ discipline.name }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="bg-white border-b border-gray-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-sm text-gray-500 flex gap-2 flex-wrap">
+    <a href="/programs" class="hover:text-vgtu-dark">Программы</a>
+    <span>›</span>
+    <a href="/programs/{{ discipline.program_id }}" class="hover:text-vgtu-dark">{{ discipline.program_name }}</a>
+    <span>›</span>
+    <a href="/disciplines/{{ discipline.id }}" class="hover:text-vgtu-dark">{{ discipline.name }}</a>
+    <span>›</span>
+    <span class="text-gray-700">Отчёт</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Шапка -->
+<div class="card px-6 py-4 mb-5 flex flex-wrap items-center justify-between gap-4">
+  <div>
+    <h1 class="text-lg font-bold text-gray-800">{{ discipline.name }}</h1>
+    <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
+      <span>{{ discipline.program_name }}</span>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 flex-wrap">
+    {% set s = report_status.status.value %}
+    <div class="text-sm">
+      Статус:
+      <span class="inline-block ml-1 px-3 py-1 rounded font-medium text-sm status-{{ s }}">
+        {{ report_status.status.label }}
+      </span>
+    </div>
+
+    {% if s == 'draft' %}
+    {% if report_files %}
+    <form method="post" action="/reports/discipline/{{ discipline.id }}/submit">
+      <button type="submit" class="btn-gold text-sm">✓ Отправить на утверждение</button>
+    </form>
+    {% else %}
+    <div class="flex flex-col items-end gap-0.5">
+      <button type="button" disabled
+              class="px-5 py-2 rounded text-sm font-semibold bg-gray-200 text-gray-400 cursor-not-allowed">
+        ✓ Отправить на утверждение
+      </button>
+      <span class="text-xs text-gray-400">Сначала загрузите файл отчёта</span>
+    </div>
+    {% endif %}
+    {% elif s == 'submitted' %}
+    {% if report_status.submitted_by_id == user.id %}
+    <div class="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded">
+      Ожидает утверждения вышестоящим руководством
+    </div>
+    {% else %}
+    <form method="post" action="/reports/discipline/{{ discipline.id }}/approve">
+      <button type="submit" class="btn-gold text-sm">✓ Утвердить</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/reports/discipline/{{ discipline.id }}/reset">
+      <button type="submit" class="btn-danger text-sm"
+              onclick="return confirm('Вернуть в черновик?')">Вернуть</button>
+    </form>
+    {% elif s == 'approved' %}
+    <div class="text-sm text-green-700 font-medium">
+      ✓ Утверждено
+      {% if report_status.approved_at %}
+        {{ report_status.approved_at.strftime('%d.%m.%Y') }}
+      {% endif %}
+    </div>
+    <form method="post" action="/reports/discipline/{{ discipline.id }}/reset">
+      <button type="submit" class="btn-danger text-sm"
+              onclick="return confirm('Снять утверждение?')">Снять</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% set loose_files = report_files | selectattr('category_id', 'none') | list %}
+{% if loose_files %}
+<div class="card px-6 py-4 mb-5">
+  <h2 class="text-sm font-semibold text-gray-700 mb-3">Файлы отчёта</h2>
+  <ul class="divide-y divide-gray-100">
+    {% for f in loose_files %}
+    <li class="py-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          {% if f.content_type == 'application/pdf' %}
+          <span class="text-red-500 font-bold text-xs shrink-0 bg-red-50 px-1.5 py-0.5 rounded">PDF</span>
+          {% else %}
+          <span class="text-blue-500 font-bold text-xs shrink-0 bg-blue-50 px-1.5 py-0.5 rounded">DOC</span>
+          {% endif %}
+          <span class="text-sm font-medium text-gray-700 truncate">{{ f.original_name }}</span>
+          <span class="text-xs text-gray-400 shrink-0">{{ (f.size / 1024)|int }} КБ</span>
+          <span class="text-xs text-gray-400 shrink-0">{{ f.uploaded_at.strftime('%d.%m.%Y') }}</span>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <a href="/reports/files/{{ f.id }}/download" class="text-xs text-vgtu-dark hover:underline">Скачать</a>
+          <form method="post" action="/reports/files/{{ f.id }}/delete" class="inline">
+            <button type="submit" class="text-gray-300 hover:text-red-400 text-lg leading-none"
+                    onclick="return confirm('Удалить файл «{{ f.original_name }}»?')" title="Удалить">&times;</button>
+          </form>
+        </div>
+      </div>
+      <div class="mt-2 pl-1">
+        {% if f.feedback %}
+        <div class="mb-2 px-3 py-2 bg-amber-50 border-l-2 border-amber-400 rounded-r text-xs text-amber-900 whitespace-pre-wrap">{{ f.feedback }}</div>
+        {% endif %}
+        <form method="post" action="/reports/files/{{ f.id }}/feedback" class="flex gap-2">
+          <input type="hidden" name="discipline_id" value="{{ discipline.id }}">
+          <textarea name="feedback" rows="1" placeholder="Замечание к этому файлу..."
+                    class="flex-1 border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-600 resize-none
+                           focus:outline-none focus:border-vgtu-dark focus:ring-1 focus:ring-vgtu-dark"></textarea>
+          <button type="submit" class="text-xs text-gray-500 hover:text-vgtu-dark px-2 border border-gray-200 rounded hover:border-vgtu-dark shrink-0 self-start py-1.5">Сохр.</button>
+        </form>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<!-- Прогресс -->
+{% set total_items = namespace(n=0) %}
+{% set done_items = namespace(n=0) %}
+{% for cat in categories %}
+  {% for item in cat.items %}
+    {% set total_items.n = total_items.n + 1 %}
+    {% if item.is_done %}{% set done_items.n = done_items.n + 1 %}{% endif %}
+  {% endfor %}
+{% endfor %}
+{% if total_items.n > 0 %}
+<div class="card px-5 py-3 mb-4">
+  <div class="flex items-center justify-between text-sm mb-2">
+    <span class="text-gray-600 font-medium">Выполнено пунктов</span>
+    <span class="font-semibold text-gray-800">{{ done_items.n }} / {{ total_items.n }}</span>
+  </div>
+  <div class="w-full bg-gray-100 rounded-full h-2">
+    {% set pct = (done_items.n / total_items.n * 100)|int %}
+    <div class="h-2 rounded-full transition-all {% if pct == 100 %}bg-green-500{% elif pct >= 50 %}bg-vgtu-gold{% else %}bg-vgtu-dark{% endif %}"
+         style="width: {{ pct }}%"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Чеклист -->
+<div class="space-y-4">
+  {% for cat in categories %}
+  <div class="card overflow-hidden">
+    <div class="bg-gray-50 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
+      <h2 class="font-semibold text-gray-700 text-sm">{{ cat.name }}</h2>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-gray-400">
+          {% set cat_done = cat.items|selectattr('is_done')|list|length %}
+          {{ cat_done }}/{{ cat.items|length }} выполнено
+        </span>
+        <button onclick="toggleAddItem({{ cat.id }})"
+                class="text-xs text-vgtu-dark hover:underline font-medium">+ Пункт</button>
+        <form method="post"
+              action="/reports/discipline/{{ discipline.id }}/category/{{ cat.id }}/delete"
+              class="inline">
+          <button type="submit" class="text-xs text-red-400 hover:text-red-600"
+                  data-confirm="Удалить категорию «{{ cat.name }}» со всеми пунктами?"
+                  onclick="return confirm(this.dataset.confirm)">Удалить</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="add-item-{{ cat.id }}" class="hidden px-5 py-3 bg-blue-50 border-b border-blue-100">
+      <form method="post" action="/reports/discipline/{{ discipline.id }}/item" class="flex gap-2">
+        <input type="hidden" name="category_id" value="{{ cat.id }}">
+        <input type="text" name="title" placeholder="Название пункта" required
+               class="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm
+                      focus:outline-none focus:border-vgtu-dark">
+        <button type="submit" class="btn-primary text-xs">Добавить</button>
+        <button type="button" onclick="toggleAddItem({{ cat.id }})"
+                class="text-xs text-gray-500 hover:text-gray-700 px-2">Отмена</button>
+      </form>
+    </div>
+
+    {% if cat.files %}
+    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+      {% for f in cat.files %}
+      <div class="flex items-center justify-between gap-3 {% if not loop.first %}mt-2 pt-2 border-t border-gray-100{% endif %}">
+        <div class="flex items-center gap-2 min-w-0">
+          {% if f.content_type == 'application/pdf' %}
+          <span class="text-red-500 font-bold text-xs shrink-0 bg-red-50 px-1.5 py-0.5 rounded">PDF</span>
+          {% else %}
+          <span class="text-blue-500 font-bold text-xs shrink-0 bg-blue-50 px-1.5 py-0.5 rounded">DOC</span>
+          {% endif %}
+          <span class="text-sm font-medium text-gray-700 truncate">{{ f.original_name }}</span>
+          <span class="text-xs text-gray-400 shrink-0">{{ (f.size / 1024)|int }} КБ</span>
+          <span class="text-xs text-gray-400 shrink-0">{{ f.uploaded_at.strftime('%d.%m.%Y') }}</span>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <a href="/reports/files/{{ f.id }}/download" class="text-xs text-vgtu-dark hover:underline">Скачать</a>
+          <form method="post" action="/reports/files/{{ f.id }}/delete" class="inline">
+            <button type="submit" class="text-gray-300 hover:text-red-400 text-lg leading-none"
+                    onclick="return confirm('Удалить файл «{{ f.original_name }}»?')" title="Удалить">&times;</button>
+          </form>
+        </div>
+      </div>
+      <div class="mt-1.5 pl-1">
+        {% if f.feedback %}
+        <div class="mb-1.5 px-3 py-1.5 bg-amber-50 border-l-2 border-amber-400 rounded-r text-xs text-amber-900 whitespace-pre-wrap">{{ f.feedback }}</div>
+        {% endif %}
+        <form method="post" action="/reports/files/{{ f.id }}/feedback" class="flex gap-2">
+          <input type="hidden" name="discipline_id" value="{{ discipline.id }}">
+          <textarea name="feedback" rows="1" placeholder="Замечание к файлу..."
+                    class="flex-1 border border-gray-200 rounded px-2 py-1 text-xs text-gray-600 resize-none
+                           focus:outline-none focus:border-vgtu-dark focus:ring-1 focus:ring-vgtu-dark"></textarea>
+          <button type="submit" class="text-xs text-gray-500 hover:text-vgtu-dark px-2 border border-gray-200 rounded hover:border-vgtu-dark shrink-0 self-start py-1">Сохр.</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if cat.items %}
+    <ul class="divide-y divide-gray-50">
+      {% for item in cat.items %}
+      <li class="px-5 py-3 flex items-start gap-3 {% if item.is_done %}bg-green-50{% endif %}">
+        <form method="post" action="/reports/item/{{ item.id }}/toggle" class="mt-0.5">
+          <input type="hidden" name="discipline_id" value="{{ discipline.id }}">
+          <input type="hidden" name="is_done" value="{{ 'false' if item.is_done else 'true' }}">
+          <button type="submit"
+                  class="w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center
+                         {% if item.is_done %}bg-green-500 border-green-500 text-white{% else %}border-gray-400 hover:border-vgtu-dark{% endif %}">
+            {% if item.is_done %}<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>{% endif %}
+          </button>
+        </form>
+
+        <div class="flex-1 min-w-0">
+          <p class="text-sm {% if item.is_done %}text-gray-400 line-through{% else %}text-gray-700{% endif %}">
+            {{ item.title }}
+          </p>
+          <div class="mt-1.5">
+            <form method="post" action="/reports/item/{{ item.id }}/comment" class="flex gap-2">
+              <input type="hidden" name="discipline_id" value="{{ discipline.id }}">
+              <input type="text" name="comment" value="{{ item.comment or '' }}"
+                     placeholder="Комментарий..."
+                     class="flex-1 border border-gray-200 rounded px-2 py-1 text-xs text-gray-600
+                            focus:outline-none focus:border-gray-400 bg-transparent">
+              <button type="submit" class="text-xs text-gray-400 hover:text-gray-600 px-1">Сохр.</button>
+            </form>
+          </div>
+        </div>
+
+        <form method="post" action="/reports/item/{{ item.id }}/delete">
+          <input type="hidden" name="discipline_id" value="{{ discipline.id }}">
+          <button type="submit" class="text-gray-300 hover:text-red-400 text-lg leading-none flex-shrink-0"
+                  title="Удалить">&times;</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="px-5 py-4 text-sm text-gray-400">Пункты не добавлены</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- Добавить отчёт (объединённая форма: категория + файл) -->
+  <div class="card px-5 py-4">
+    <h3 class="text-sm font-semibold text-gray-700 mb-1">Добавить раздел отчёта</h3>
+    <p class="text-xs text-gray-400 mb-3">Укажите название раздела и при необходимости прикрепите файл</p>
+    <form method="post" action="/reports/discipline/{{ discipline.id }}/category"
+          enctype="multipart/form-data">
+      <div class="flex gap-2 mb-2">
+        <input type="text" name="name" id="new-cat-name"
+               placeholder="Название раздела (например: РПД, Нагрузка, Документы...)" required
+               oninput="toggleFileField(this.value)"
+               class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm
+                      focus:outline-none focus:border-vgtu-dark focus:ring-1 focus:ring-vgtu-dark">
+        <button type="submit" class="btn-primary shrink-0">Добавить</button>
+      </div>
+      <div id="file-upload-field" class="hidden">
+        <label class="block">
+          <input type="file" name="file" accept=".pdf,.doc,.docx"
+                 class="block w-full text-sm text-gray-600
+                        file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0
+                        file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700
+                        hover:file:bg-gray-200 cursor-pointer">
+        </label>
+        <p class="text-xs text-gray-400 mt-1">Необязательно — PDF, DOC, DOCX до 20 МБ</p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleAddItem(catId) {
+  const el = document.getElementById('add-item-' + catId);
+  el.classList.toggle('hidden');
+  if (!el.classList.contains('hidden')) {
+    el.querySelector('input[name=title]').focus();
+  }
+}
+
+function toggleFileField(val) {
+  const field = document.getElementById('file-upload-field');
+  if (val.trim().length > 0) {
+    field.classList.remove('hidden');
+  } else {
+    field.classList.add('hidden');
+  }
+}
+</script>
+{% endblock %}
