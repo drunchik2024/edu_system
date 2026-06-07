@@ -64,7 +64,9 @@ def _program_to_dict(p: EducationalProgram, full: bool = False) -> dict:
         "education_duration": p.education_duration or "",
         "description": p.description or "",
         "standard_file": p.standard_file,
-        "curriculum_file": p.curriculum_file,
+        "curriculum_file_full_time": p.curriculum_file_full_time,
+        "curriculum_file_part_time": p.curriculum_file_part_time,
+        "curriculum_file_mixed": p.curriculum_file_mixed,
         "title_page_file": p.title_page_file,
         "activity_types": p.activity_types or "",
         "structure_text": p.structure_text or "",
@@ -156,7 +158,11 @@ async def delete_program(db: AsyncSession, program_id: int, director_id: int) ->
     if not p:
         raise HTTPException(status_code=404, detail="Программа не найдена")
     # Удаляем файлы с диска
-    for fname in [p.standard_file, p.curriculum_file, p.title_page_file]:
+    for fname in [
+        p.standard_file,
+        p.curriculum_file_full_time, p.curriculum_file_part_time, p.curriculum_file_mixed,
+        p.title_page_file,
+    ]:
         if fname:
             _delete_file(fname)
     await db.delete(p)
@@ -170,7 +176,14 @@ async def upload_program_pdf(
     file_type: str, file: UploadFile,
 ) -> str:
     """Загружает PDF и обновляет соответствующее поле программы."""
-    if file_type not in ("standard", "curriculum", "title_page"):
+    _FILE_TYPE_TO_COL = {
+        "standard":             "standard_file",
+        "curriculum_full_time": "curriculum_file_full_time",
+        "curriculum_part_time": "curriculum_file_part_time",
+        "curriculum_mixed":     "curriculum_file_mixed",
+        "title_page":           "title_page_file",
+    }
+    if file_type not in _FILE_TYPE_TO_COL:
         raise HTTPException(status_code=400, detail="Неизвестный тип файла")
 
     content = await file.read()
@@ -190,8 +203,8 @@ async def upload_program_pdf(
     if not p:
         raise HTTPException(status_code=404, detail="Программа не найдена")
 
-    # Удаляем старый файл если есть
-    old = getattr(p, f"{file_type}_file")
+    col = _FILE_TYPE_TO_COL[file_type]
+    old = getattr(p, col)
     if old:
         _delete_file(old)
 
@@ -199,7 +212,7 @@ async def upload_program_pdf(
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     (UPLOAD_DIR / stored_name).write_bytes(content)
 
-    setattr(p, f"{file_type}_file", stored_name)
+    setattr(p, col, stored_name)
     await db.commit()
     return stored_name
 

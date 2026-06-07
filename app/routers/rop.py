@@ -55,19 +55,16 @@ async def create_program(
     form = await request.form()
     data = _extract_program_data(form, current_user)
 
-    # Файлы программы
-    standard_file   = form.get("standard_file")
-    curriculum_file = form.get("curriculum_file")
-    title_page_file = form.get("title_page_file")
-
     p = await svc.create_program(db, data, current_user.id)
 
-    # Загружаем PDF-файлы если переданы
-    for field_name, file_field in [
-        ("standard", standard_file),
-        ("curriculum", curriculum_file),
-        ("title_page", title_page_file),
+    for field_name, form_key in [
+        ("standard",             "standard_file"),
+        ("curriculum_full_time", "curriculum_file_full_time"),
+        ("curriculum_part_time", "curriculum_file_part_time"),
+        ("curriculum_mixed",     "curriculum_file_mixed"),
+        ("title_page",           "title_page_file"),
     ]:
+        file_field = form.get(form_key)
         if isinstance(file_field, UploadFile) and file_field.filename:
             await svc.upload_program_pdf(db, p.id, current_user.id, field_name, file_field)
 
@@ -125,12 +122,14 @@ async def update_program(
 
     await svc.update_program(db, program_id, current_user.id, data)
 
-    # Новые PDF-файлы (если пользователь выбрал новый файл)
-    for field_name, form_field in [
-        ("standard",   form.get("standard_file")),
-        ("curriculum", form.get("curriculum_file")),
-        ("title_page", form.get("title_page_file")),
+    for field_name, form_key in [
+        ("standard",             "standard_file"),
+        ("curriculum_full_time", "curriculum_file_full_time"),
+        ("curriculum_part_time", "curriculum_file_part_time"),
+        ("curriculum_mixed",     "curriculum_file_mixed"),
+        ("title_page",           "title_page_file"),
     ]:
+        form_field = form.get(form_key)
         if isinstance(form_field, UploadFile) and form_field.filename:
             await svc.upload_program_pdf(db, program_id, current_user.id, field_name, form_field)
 

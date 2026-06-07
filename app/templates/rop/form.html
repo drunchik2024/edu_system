@@ -167,11 +167,10 @@
       <h2 class="text-base font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-100">
         Документы программы
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% set doc_fields = [
-          ("standard_file",   "Стандарт",    "standard_file"),
-          ("curriculum_file", "Учебный план", "curriculum_file"),
-          ("title_page_file", "Титульный лист", "title_page_file"),
+          ("standard_file",   "Стандарт",       "standard_file"),
+          ("title_page_file", "Титульный лист",  "title_page_file"),
         ] %}
         {% for field_name, label, form_name in doc_fields %}
         <div>
@@ -194,6 +193,39 @@
           {% endif %}
         </div>
         {% endfor %}
+      </div>
+
+      <!-- Учебные планы по формам обучения -->
+      <div class="mt-4">
+        <p class="field-label mb-3">Учебный план</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {% set curriculum_fields = [
+            ("curriculum_file_full_time", "Очная",       "curriculum_file_full_time"),
+            ("curriculum_file_part_time", "Заочная",     "curriculum_file_part_time"),
+            ("curriculum_file_mixed",     "Очно-заочная","curriculum_file_mixed"),
+          ] %}
+          {% for field_name, label, form_name in curriculum_fields %}
+          <div>
+            <label class="field-label text-gray-500">{{ label }}</label>
+            {% if program and program[field_name] %}
+            <div class="file-current mb-2">
+              <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4 4a2 2 0 012-2h4l6 6v8a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/>
+              </svg>
+              <a href="/programs/files/{{ program[field_name] }}/download"
+                 class="text-vgtu-dark hover:underline truncate" target="_blank">
+                Скачать PDF
+              </a>
+            </div>
+            {% endif %}
+            <input class="field-input" type="file" name="{{ form_name }}" accept=".pdf"
+                   style="padding: 0.3rem">
+            {% if program and program[field_name] %}
+            <p class="text-xs text-gray-400 mt-1">Выберите файл для замены</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
       </div>
     </div>
 
